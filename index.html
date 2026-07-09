@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     body { font-family: 'Libre Franklin', sans-serif; }
     .team-card { cursor: grab; user-select: none; transition: transform 0.15s, box-shadow 0.15s; }
@@ -40,7 +41,7 @@
     <div class="flex flex-col gap-4">
      <div class="relative">
       <button data-template-id="mode-admin-btn" class="canva-button w-full px-6 py-3 rounded-lg font-semibold text-lg" onclick="showAdminPinInput()" style="background: rgb(37, 99, 235); color: rgb(255, 255, 255); font-weight: 600; font-style: normal; font-size: 16px;">ผู้ดูแล</button>
-     </div><button data-template-id="mode-viewer-btn" class="canva-button px-6 py-3 rounded-lg font-semibold text-lg" onclick="showViewerPinInput()" style="background: rgb(100, 116, 139); color: rgb(255, 255, 255); font-weight: 600; font-style: normal; font-size: 16px;">ผู้ชม</button>
+     </div><button data-template-id="mode-viewer-btn" class="canva-button px-6 py-3 rounded-lg font-semibold text-lg" onclick="selectMode('viewer')" style="background: rgb(100, 116, 139); color: rgb(255, 255, 255); font-weight: 600; font-style: normal; font-size: 16px;">ผู้ชม</button>
      <div id="pin-section" class="hidden mt-2">
       <label for="pin-input" class="block text-sm font-semibold text-slate-700 mb-1">กรอก PIN</label> <input id="pin-input" type="password" inputmode="numeric" maxlength="5" class="w-full px-4 py-2 border-2 border-slate-300 rounded-lg text-center text-xl tracking-widest font-bold" placeholder="•••••" autocomplete="off">
       <p id="pin-error" class="text-red-500 text-sm mt-1 hidden">PIN ไม่ถูกต้อง</p><button class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition" onclick="verifyPin()">ยืนยัน</button>
@@ -51,7 +52,7 @@
   <div id="cover-screen" class="fixed inset-0 flex flex-col items-center justify-center z-50" style="display:none;">
    <div class="w-full h-full flex flex-col items-center justify-center px-4" style="position:relative;">
     <div style="position:relative;z-index:1;" class="text-center">
-     <div class="mb-8"><img data-template-id="school-logo" class="canva-image h-56 w-56 object-contain mx-auto filter drop-shadow-2xl" loading="lazy" src="logo.png" alt="โลโก้โรงเรียนเสลภูมิพิทยาคม">
+     <div class="mb-8"><img data-template-id="school-logo" class="canva-image h-56 w-56 object-contain mx-auto filter drop-shadow-2xl" loading="lazy" src="https://drive.google.com/uc?export=view&amp;id=1KSx1pFczimMeZFwoDNSWrNCOiBJz_H22" alt="โลโก้โรงเรียนเสลภูมิพิทยาคม">
      </div>
      <div class="mb-6">
       <h1 data-template-id="cover-title" class="canva-text text-5xl font-bold mb-4 whitespace-pre-wrap text-white drop-shadow-lg" style="text-shadow: rgba(0, 0, 0, 0.3) 0px 4px 12px; color: rgb(255, 255, 255); font-weight: 800; font-style: normal; font-size: 48px;">จับสลากแบ่งสายการแข่งขันกีฬา-กรีฑาคณะสี
@@ -89,7 +90,7 @@
    </header>
    <main class="flex flex-col gap-6 max-w-5xl mx-auto">
     <div class="flex flex-col sm:flex-row gap-4 items-end">
-     <div class="flex-1"><label for="sport-select" data-template-id="sport-label" class="canva-text block text-sm font-semibold mb-2" style="color: rgb(51, 65, 85); font-weight: 400; font-style: normal; font-size: 16px;">ชนิดกีฬา</label><select id="sport-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg"><option value="">-- เลือกชนิดกีฬา --</option><option value="ฟุตบอล">ฟุตบอล</option><option value="ฟุตซอล">ฟุตซอล</option><option value="วอลเลย์บอล">วอลเลย์บอล</option><option value="บาสเก็ตบอล">บาสเก็ตบอล</option><option value="ตะกร้อ">ตะกร้อ</option><option value="เปตอง">เปตอง</option><option value="อีสปอร์ต (ROV)">อีสปอร์ต (ROV)</option></select>
+     <div class="flex-1"><label for="sport-select" data-template-id="sport-label" class="canva-text block text-sm font-semibold mb-2" style="color: rgb(51, 65, 85); font-weight: 400; font-style: normal; font-size: 16px;">ชนิดกีฬา</label><select id="sport-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg"><option value="">-- เลือกชนิดกีฬา --</option><option value="ฟุตบอล">ฟุตบอล</option><option value="ฟุตซอล">ฟุตซอล</option><option value="วอลเลย์บอล">วอลเลย์บอล</option><option value="บาสเกตบอล">บาสเกตบอล</option><option value="ตะกร้อ">ตะกร้อ</option><option value="เปตอง">เปตอง</option><option value="อีสปอร์ต (ROV)">อีสปอร์ต (ROV)</option></select>
      </div>
      <div class="flex-1"><label for="gender-select" data-template-id="gender-label" class="canva-text block text-sm font-semibold mb-2" style="color: rgb(51, 65, 85); font-weight: 400; font-style: normal; font-size: 16px;">เพศ</label><select id="gender-select" class="w-full px-3 py-2 border border-gray-300 rounded-lg"><option value="">-- เลือกเพศ --</option><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select>
      </div>
@@ -141,7 +142,7 @@
      </aside>
      <section class="flex-1 overflow-x-auto">
       <div class="relative" style="width:780px; height:460px;">
-       <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H300 V40"></path><path class="connector" d="M300,40 H300 V100 H440"></path><path class="connector" d="M135,120 H220"></path><path class="connector" d="M135,200 H220"></path><path class="connector" d="M220,120 V160 H280"></path><path class="connector" d="M220,200 V160"></path><path class="connector" d="M400,160 H440 V130"></path><path class="connector" d="M440,100 V130"></path><path class="connector" d="M440,115 H510"></path><path class="connector" d="M630,115 H660 V210"></path><path class="connector" d="M135,270 H220"></path><path class="connector" d="M135,350 H220"></path><path class="connector" d="M220,270 V310 H280"></path><path class="connector" d="M220,350 V310"></path><path class="connector" d="M400,310 H440 V340"></path><path class="connector" d="M135,430 H300 V430"></path><path class="connector" d="M300,430 V370 H440"></path><path class="connector" d="M440,340 V370"></path><path class="connector" d="M440,355 H510"></path><path class="connector" d="M630,355 H660 V250"></path><path class="connector" d="M660,210 V250"></path><path class="connector" d="M660,230 H700"></path>
+       <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H480 V100"></path><path class="connector" d="M135,120 H220"></path><path class="connector" d="M135,200 H220"></path><path class="connector" d="M220,120 V160 H280"></path><path class="connector" d="M220,200 V160"></path><path class="connector" d="M400,160 H480 V130"></path><path class="connector" d="M480,100 V130"></path><path class="connector" d="M480,115 H510"></path><path class="connector" d="M630,115 H660 V210"></path><path class="connector" d="M135,270 H220"></path><path class="connector" d="M135,350 H220"></path><path class="connector" d="M220,270 V310 H280"></path><path class="connector" d="M220,350 V310"></path><path class="connector" d="M400,310 H480 V340"></path><path class="connector" d="M135,430 H480 V370"></path><path class="connector" d="M480,340 V370"></path><path class="connector" d="M480,355 H510"></path><path class="connector" d="M630,355 H660 V250"></path><path class="connector" d="M660,210 V250"></path><path class="connector" d="M660,230 H700"></path>
        </svg>
        <div class="absolute flex flex-col" style="left:0px;top:18px;">
         <div class="flex items-center gap-1 mb-1"><span class="text-xs font-bold text-slate-500">1</span>
@@ -179,14 +180,14 @@
            คู่ที่ 2</span>
         </div>
        </div>
-       <div class="absolute" style="left:450px;top:125px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 3</span>
+       <div class="absolute" style="left:405px;top:95px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 3</span>
        </div>
        <div class="absolute" style="left:510px;top:93px;">
         <div class="bracket-slot" data-slot="sf-1" style="position:relative;"><span class="absolute inset-0 flex items-center justify-center text-gray-400 opacity-30 text-center text-xs font-semibold pointer-events-none" style="font-size:11px;">ผู้ชนะ<br>
            คู่ที่ 3</span>
         </div>
        </div>
-       <div class="absolute" style="left:450px;top:365px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 4</span>
+       <div class="absolute" style="left:405px;top:335px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 4</span>
        </div>
        <div class="absolute" style="left:510px;top:333px;">
         <div class="bracket-slot" data-slot="sf-2" style="position:relative;"><span class="absolute inset-0 flex items-center justify-center text-gray-400 opacity-30 text-center text-xs font-semibold pointer-events-none" style="font-size:11px;">ผู้ชนะ<br>
@@ -232,7 +233,6 @@
   </div>
   <script>
 const ADMIN_PIN = '21569';
-const VIEWER_PIN = '12345';
 
 // ===== เชื่อมกับ Google Sheets (ผ่าน Apps Script Web App) =====
 // วาง URL ที่ได้จากตอน Deploy Apps Script (ลงท้ายด้วย /exec) แทนบรรทัดด้านล่าง
@@ -315,14 +315,14 @@ const levelOptions = {
   'ฟุตบอล|ชาย': ['ม.ต้น','ม.ปลาย'], 'ฟุตบอล|หญิง': ['ม.1-6'],
   'ฟุตซอล|ชาย': ['ม.1-2','ม.3-4','ม.5-6'], 'ฟุตซอล|หญิง': ['ม.ต้น','ม.ปลาย'],
   'วอลเลย์บอล|ชาย': ['ม.ต้น','ม.ปลาย'], 'วอลเลย์บอล|หญิง': ['ม.ต้น','ม.ปลาย'],
-  'บาสเก็ตบอล|ชาย': ['ม.ต้น','ม.ปลาย'], 'บาสเก็ตบอล|หญิง': ['ม.ต้น','ม.ปลาย'],
+  'บาสเกตบอล|ชาย': ['ม.ต้น','ม.ปลาย'], 'บาสเกตบอล|หญิง': ['ม.ต้น','ม.ปลาย'],
   'ตะกร้อ|ชาย': ['ม.1-2','ม.3-4','ม.5-6'], 'ตะกร้อ|หญิง': ['ม.ต้น','ม.ปลาย'],
   'เปตอง|ชาย': ['ม.1-2','ม.3-4','ม.5-6'], 'เปตอง|หญิง': ['ม.1-2','ม.3-4','ม.5-6'],
   'อีสปอร์ต (ROV)|ชาย-หญิง': ['ม.ต้น','ม.ปลาย']
 };
 const genderOptions = {
   'ฟุตบอล': ['ชาย','หญิง'], 'ฟุตซอล': ['ชาย','หญิง'],
-  'วอลเลย์บอล': ['ชาย','หญิง'], 'บาสเก็ตบอล': ['ชาย','หญิง'],
+  'วอลเลย์บอล': ['ชาย','หญิง'], 'บาสเกตบอล': ['ชาย','หญิง'],
   'ตะกร้อ': ['ชาย','หญิง'], 'เปตอง': ['ชาย','หญิง'],
   'อีสปอร์ต (ROV)': ['ชาย-หญิง']
 };
@@ -331,19 +331,17 @@ const genderOptions = {
 function selectMode(mode) {
   currentMode = mode;
   document.getElementById('mode-screen').style.display = 'none';
-  document.getElementById('cover-screen').style.display = 'flex';
+  if (mode === 'viewer') {
+    document.getElementById('cover-screen').style.display = 'none';
+    document.getElementById('bracket-page').style.display = '';
+  } else {
+    document.getElementById('cover-screen').style.display = 'flex';
+  }
   applyModeRestrictions();
   loadDrawsFromSheet();
 }
 function showAdminPinInput() {
   currentPinMode = 'admin';
-  document.getElementById('pin-section').classList.remove('hidden');
-  document.getElementById('pin-input').value = '';
-  document.getElementById('pin-error').classList.add('hidden');
-  document.getElementById('pin-input').focus();
-}
-function showViewerPinInput() {
-  currentPinMode = 'viewer';
   document.getElementById('pin-section').classList.remove('hidden');
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').classList.add('hidden');
@@ -355,9 +353,6 @@ function verifyPin() {
   if (currentPinMode === 'admin' && pin === ADMIN_PIN) {
     document.getElementById('pin-error').classList.add('hidden');
     selectMode('admin');
-  } else if (currentPinMode === 'viewer' && pin === VIEWER_PIN) {
-    document.getElementById('pin-error').classList.add('hidden');
-    selectMode('viewer');
   } else {
     document.getElementById('pin-error').classList.remove('hidden');
   }
@@ -452,11 +447,21 @@ document.querySelectorAll('#bracket-page .bracket-slot').forEach(slot => {
   slot.addEventListener('drop', e => {
     e.preventDefault(); slot.classList.remove('drag-over');
     if (!draggedTeam || currentMode !== 'admin') return;
-    const isFromPool = !document.querySelector('#bracket-page .bracket-slot[data-filled-team="' + draggedTeam + '"]');
-    if (r1Slots.includes(slotId) && isFromPool) {
-      document.querySelectorAll('#bracket-page .bracket-slot').forEach(s => { if (s.dataset.filledTeam === draggedTeam) clearSlot(s); });
-      fillSlot(slot, draggedTeam); hidePoolCard(draggedTeam);
-    } else if (!r1Slots.includes(slotId) && !isFromPool) {
+    const originSlot = document.querySelector('#bracket-page .bracket-slot[data-filled-team="' + draggedTeam + '"]');
+    const isFromPool = !originSlot;
+    if (r1Slots.includes(slotId)) {
+      if (isFromPool) {
+        document.querySelectorAll('#bracket-page .bracket-slot').forEach(s => { if (s.dataset.filledTeam === draggedTeam) clearSlot(s); });
+        const displacedTeam = slot.dataset.filledTeam;
+        if (displacedTeam && displacedTeam !== draggedTeam) { showPoolCard(displacedTeam); }
+        fillSlot(slot, draggedTeam); hidePoolCard(draggedTeam);
+      } else if (originSlot !== slot) {
+        // ลากสลับ/ย้ายตำแหน่งระหว่างช่อง r1 ด้วยกัน (เผื่อลากผิดช่อง อยากย้ายทีหลัง)
+        const targetTeam = slot.dataset.filledTeam;
+        if (targetTeam) { fillSlot(originSlot, targetTeam); } else { clearSlot(originSlot); }
+        fillSlot(slot, draggedTeam);
+      }
+    } else if (!isFromPool) {
       fillSlot(slot, draggedTeam);
     }
     draggedTeam = null; saveCurrentDraw();
@@ -465,6 +470,16 @@ document.querySelectorAll('#bracket-page .bracket-slot').forEach(slot => {
     if (currentMode !== 'admin') return;
     if (slot.dataset.filledTeam && r1Slots.includes(slot.dataset.slot)) { showPoolCard(slot.dataset.filledTeam); clearSlot(slot); saveCurrentDraw(); }
   });
+});
+// ลากทีมที่วางไปแล้วกลับมาปล่อยที่ panel ทีมแข่งขัน เพื่อดึงคืนที่เดิมเผื่อแก้ไข/ลากผิด
+const teamPoolDropZone = document.getElementById('team-pool');
+teamPoolDropZone.addEventListener('dragover', e => { if (!draggedTeam || currentMode !== 'admin') return; e.preventDefault(); });
+teamPoolDropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  if (!draggedTeam || currentMode !== 'admin') return;
+  const originSlot = document.querySelector('#bracket-page .bracket-slot[data-filled-team="' + draggedTeam + '"]');
+  if (originSlot) { clearSlot(originSlot); showPoolCard(draggedTeam); saveCurrentDraw(); }
+  draggedTeam = null;
 });
 
 function fillSlot(slot, teamId) {
@@ -528,7 +543,14 @@ function shuffleTeamOrder() {
 }
 
 function startDraw() { document.getElementById('cover-screen').style.display = 'none'; document.getElementById('bracket-page').style.display = ''; applyModeRestrictions(); }
-function backToCover() { document.getElementById('cover-screen').style.display = 'flex'; document.getElementById('bracket-page').style.display = 'none'; }
+function backToCover() {
+  document.getElementById('bracket-page').style.display = 'none';
+  if (currentMode === 'viewer') {
+    document.getElementById('mode-screen').style.display = 'flex';
+  } else {
+    document.getElementById('cover-screen').style.display = 'flex';
+  }
+}
 
 // Schedule page with multiple A4 pages
 function goToSchedule() {
@@ -582,7 +604,7 @@ function renderCurrentSchedulePage() {
     const s1 = m.c1 ? 'background:'+m.c1+';color:#fff;font-weight:600;' : '';
     const s2 = m.c2 ? 'background:'+m.c2+';color:#fff;font-weight:600;' : '';
     const editable = currentMode === 'admin' ? ' contenteditable="true"' : '';
-    return '<tr><td>'+m.pair+'</td><td'+editable+' style="'+s1+'">'+m.t1+'</td><td>VS</td><td'+editable+' style="'+s2+'">'+m.t2+'</td><td'+editable+'>'+m.round+'</td><td'+editable+'></td><td'+editable+'></td><td'+editable+'></td></tr>';
+    return '<tr><td>'+m.pair+'</td><td style="'+s1+'">'+m.t1+'</td><td>VS</td><td style="'+s2+'">'+m.t2+'</td><td>'+m.round+'</td><td'+editable+'></td><td'+editable+'></td><td'+editable+'></td></tr>';
   }).join('');
 
   // Build bracket snapshot HTML
@@ -598,7 +620,7 @@ function renderCurrentSchedulePage() {
     <div class="text-center mb-4"><h2 class="text-lg font-bold text-slate-900 mb-2">${header}</h2></div>
     <div class="mb-6 p-4 border border-slate-300 rounded-lg bg-slate-50" style="max-height:280px;overflow:hidden;">
       <div style="width:780px;height:460px;transform:scale(0.5);transform-origin:top left;position:relative;">
-        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H300 V40"/><path class="connector" d="M300,40 H300 V100 H440"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H440 V130"/><path class="connector" d="M440,100 V130"/><path class="connector" d="M440,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H440 V340"/><path class="connector" d="M135,430 H300 V430"/><path class="connector" d="M300,430 V370 H440"/><path class="connector" d="M440,340 V370"/><path class="connector" d="M440,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/></svg>
+        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/></svg>
         <div class="absolute flex flex-col" style="left:0;top:18px;"><div class="flex items-center gap-1 mb-1"><span class="text-xs font-bold text-slate-500">1</span>${snapSlot('r1-1')}</div><span class="text-[12px] text-slate-400 ml-4">ทีมวาง</span></div>
         <div class="absolute flex items-center gap-1" style="left:0;top:98px;"><span class="text-xs font-bold text-slate-500">2</span>${snapSlot('r1-2')}</div>
         <div class="absolute flex items-center gap-1" style="left:0;top:178px;"><span class="text-xs font-bold text-slate-500">3</span>${snapSlot('r1-3')}</div>
@@ -609,9 +631,9 @@ function renderCurrentSchedulePage() {
         <div class="absolute" style="left:280px;top:138px;">${snapSlot('m1')}</div>
         <div class="absolute" style="left:150px;top:290px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 2</span></div>
         <div class="absolute" style="left:280px;top:288px;">${snapSlot('m2')}</div>
-        <div class="absolute" style="left:450px;top:125px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 3</span></div>
+        <div class="absolute" style="left:405px;top:95px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 3</span></div>
         <div class="absolute" style="left:510px;top:93px;">${snapSlot('sf-1')}</div>
-        <div class="absolute" style="left:450px;top:365px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 4</span></div>
+        <div class="absolute" style="left:405px;top:335px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 4</span></div>
         <div class="absolute" style="left:510px;top:333px;">${snapSlot('sf-2')}</div>
         <div class="absolute" style="left:550px;top:225px;"><span class="text-xs font-bold text-slate-600 bg-white px-2 py-1 rounded">รอบชิงชนะเลิศ</span></div>
         <div class="absolute" style="left:701.4px;top:205.65px;">${snapSlot('final')}</div>
@@ -712,6 +734,24 @@ function fitImageToA4(trimmed) {
   return { renderW, renderH, offsetX: (pageW - renderW) / 2, offsetY: (pageH - renderH) / 2 };
 }
 
+// วาง canvas ที่ตัดขอบขาวแล้วลงบน canvas ขนาดที่กำหนดพอดี (contain: คงสัดส่วนเดิม ไม่บิด ไม่ครอปทิ้ง ถ้าสัดส่วนไม่ตรงจะเว้นขอบขาวแทน)
+function fitCanvasToSize(trimmed, targetW, targetH, bgColor = '#ffffff') {
+  const out = document.createElement('canvas');
+  out.width = targetW; out.height = targetH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, targetW, targetH);
+  const imgRatio = trimmed.width / trimmed.height;
+  const targetRatio = targetW / targetH;
+  let renderW, renderH;
+  if (imgRatio > targetRatio) { renderW = targetW; renderH = targetW / imgRatio; }
+  else { renderH = targetH; renderW = targetH * imgRatio; }
+  const offsetX = (targetW - renderW) / 2;
+  const offsetY = (targetH - renderH) / 2;
+  ctx.drawImage(trimmed, offsetX, offsetY, renderW, renderH);
+  return out;
+}
+
 async function exportPDF(scope = 'current') {
   try {
     if (!window.html2canvas || !window.jspdf) {
@@ -749,13 +789,26 @@ async function exportJPG(scope = 'current') {
       return;
     }
     if (scope === 'all' && schedulePages.length > 1) {
+      if (!window.JSZip) {
+        alert('ไลบรารีสร้างไฟล์ ZIP ยังไม่พร้อม กรุณารอสักครู่แล้วลองใหม่');
+        return;
+      }
+      const zip = new JSZip();
       let idx = 1;
       await withEachSchedulePage(async (el) => {
         const trimmed = await captureTrimmedCanvas(el);
-        downloadDataUrl(trimmed.toDataURL('image/jpeg', 0.95), 'โปรแกรมการแข่งขัน-หน้า' + idx + '.jpg');
+        const base64 = trimmed.toDataURL('image/jpeg', 0.95).split(',')[1];
+        zip.file('โปรแกรมการแข่งขัน-หน้า' + idx + '.jpg', base64, { base64: true });
         idx++;
-        await new Promise(r => setTimeout(r, 400)); // เว้นจังหวะกันเบราว์เซอร์บล็อกการดาวน์โหลดหลายไฟล์รวด
       });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'โปรแกรมการแข่งขัน-ทั้งหมด.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     } else {
       const el = document.getElementById('a4-content');
       if (!el) { alert('ไม่พบเนื้อหา กรุณาเลือกกีฬาและรุ่นก่อน'); return; }
