@@ -236,7 +236,7 @@ const VIEWER_PIN = '12345';
 
 // ===== เชื่อมกับ Google Sheets (ผ่าน Apps Script Web App) =====
 // วาง URL ที่ได้จากตอน Deploy Apps Script (ลงท้ายด้วย /exec) แทนบรรทัดด้านล่าง
-const SHEET_API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx8YV5KDU-4ClQrsBudf-xvRlMNGlR_vpwmz4YD9J2qu7QTXrkIJwP1OsSrExujsn2V/exec';
 
 async function loadDrawsFromSheet() {
   if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) return;
