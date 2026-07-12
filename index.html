@@ -277,6 +277,15 @@
    <div class="no-print flex justify-center gap-4 mt-6">
     <button onclick="openExportScope('pdf')" class="px-6 py-3 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow" data-template-id="pdf-btn" style="background: rgb(220, 38, 38); color: rgb(255, 255, 255); font-weight: 700; font-style: normal; font-size: 16px;">บันทึกเป็นไฟล์ PDF</button> <button onclick="openExportScope('jpg')" class="px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow" data-template-id="jpg-btn" style="background: rgb(37, 99, 235); color: rgb(255, 255, 255); font-weight: 700; font-style: normal; font-size: 16px;">บันทึกเป็นไฟล์ JPG</button>
    </div>
+  </div><!-- Overwrite Preset Confirm Modal -->
+  <div id="overwrite-preset-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+   <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+    <h3 class="text-lg font-bold text-slate-900 mb-2">ชื่อรายการนี้มีอยู่แล้ว</h3>
+    <p id="overwrite-preset-message" class="text-sm text-slate-600 mb-4"></p>
+    <div class="flex gap-3 justify-end">
+     <button type="button" class="px-4 py-2 rounded-lg font-semibold text-slate-700 bg-gray-200 hover:bg-gray-300 transition" onclick="closeOverwritePresetConfirm()">ยกเลิก</button> <button type="button" class="px-4 py-2 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition" onclick="confirmOverwritePreset()">บันทึกทับ</button>
+    </div>
+   </div>
   </div><!-- Progress Modal -->
   <div id="progress-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl text-center">
@@ -1048,11 +1057,37 @@ async function withFakeProgress(title, taskFn) {
     throw e;
   }
 }
+let pendingPresetName = null;
 async function saveNewPreset() {
   const input = document.getElementById('preset-name-input');
   const name = input.value.trim();
   if (!name) { alert('กรุณาตั้งชื่อรายการก่อนบันทึก'); return; }
   if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) { alert('ยังไม่ได้ตั้งค่าเชื่อมต่อ Google Sheets (SHEET_API_URL) จึงบันทึกรายการไม่ได้'); return; }
+  try {
+    const res = await fetch(SHEET_API_URL + '?action=listPresets');
+    const list = await res.json();
+    if (Array.isArray(list) && list.includes(name)) {
+      pendingPresetName = name;
+      document.getElementById('overwrite-preset-message').textContent = 'มีรายการชื่อ "' + name + '" อยู่แล้ว ต้องการบันทึกทับรายการเดิมทั้งหมดหรือไม่?';
+      document.getElementById('overwrite-preset-modal').classList.remove('hidden');
+      return;
+    }
+  } catch (e) {
+    // เช็กชื่อซ้ำไม่สำเร็จ (เช่นเน็ตหลุด) ปล่อยให้บันทึกต่อไปตามปกติ ไม่บล็อกผู้ใช้
+  }
+  await actuallySavePreset(name);
+}
+function closeOverwritePresetConfirm() {
+  document.getElementById('overwrite-preset-modal').classList.add('hidden');
+  pendingPresetName = null;
+}
+async function confirmOverwritePreset() {
+  document.getElementById('overwrite-preset-modal').classList.add('hidden');
+  const name = pendingPresetName;
+  pendingPresetName = null;
+  if (name) await actuallySavePreset(name);
+}
+async function actuallySavePreset(name) {
   try {
     const { elapsed } = await withFakeProgress('กำลังบันทึกรายการ...', async () => {
       await fetch(SHEET_API_URL, {
@@ -1061,7 +1096,7 @@ async function saveNewPreset() {
         body: JSON.stringify({ action: 'savePreset', name: name, data: savedDraws })
       });
     });
-    input.value = '';
+    document.getElementById('preset-name-input').value = '';
     await renderPresetList();
     showSuccessToast('บันทึกรายการ "' + name + '" สำเร็จ (' + elapsed + ' วินาที)');
   } catch (e) {
