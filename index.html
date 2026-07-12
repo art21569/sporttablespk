@@ -10,9 +10,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     body { font-family: 'Kanit', 'Libre Franklin', sans-serif; }
-    .team-card { cursor: grab; user-select: none; transition: transform 0.15s, box-shadow 0.15s; }
+    .team-card { cursor: grab; user-select: none; transition: transform 0.15s, box-shadow 0.15s; touch-action: manipulation; }
     .team-card:active { cursor: grabbing; transform: scale(1.05); }
-    .bracket-slot { width: 120px; height: 44px; border: 2px dashed #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: border-color 0.2s, background 0.2s; }
+    .bracket-slot { width: 120px; height: 44px; border: 2px dashed #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: border-color 0.2s, background 0.2s; touch-action: manipulation; }
     #team-pool { min-height: 64px; }
     .tap-selected { outline: 3px solid #facc15; outline-offset: 2px; }
     @keyframes diceSpinAway { 0% { transform: rotate(0deg) scale(1); opacity: 1; } 60% { transform: rotate(540deg) scale(1.15); opacity: 1; } 100% { transform: rotate(720deg) scale(0.2); opacity: 0; } }
@@ -21,6 +21,9 @@
     @media (max-width: 640px) {
       header.text-center { flex-wrap: wrap; gap: 8px; }
       .a4-page { width: 100%; min-height: 0; padding: 6mm; }
+      #mode-screen > div.bg-white { padding: 28px 20px !important; }
+      #pin-section .bg-white { padding: 20px !important; }
+      .no-print.flex.justify-center { flex-wrap: wrap; }
     }
     .bracket-slot.drag-over { border-color: #3b82f6; background: #eff6ff; }
     .bracket-slot.filled { border-style: solid; border-color: #475569; }
@@ -278,7 +281,7 @@
     <button onclick="openExportScope('pdf')" class="px-6 py-3 rounded-lg font-semibold bg-red-600 text-white hover:bg-red-700 transition shadow" data-template-id="pdf-btn" style="background: rgb(220, 38, 38); color: rgb(255, 255, 255); font-weight: 700; font-style: normal; font-size: 16px;">บันทึกเป็นไฟล์ PDF</button> <button onclick="openExportScope('jpg')" class="px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow" data-template-id="jpg-btn" style="background: rgb(37, 99, 235); color: rgb(255, 255, 255); font-weight: 700; font-style: normal; font-size: 16px;">บันทึกเป็นไฟล์ JPG</button>
    </div>
   </div><!-- Overwrite Preset Confirm Modal -->
-  <div id="overwrite-preset-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div id="overwrite-preset-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] hidden">
    <div class="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
     <h3 class="text-lg font-bold text-slate-900 mb-2">ชื่อรายการนี้มีอยู่แล้ว</h3>
     <p id="overwrite-preset-message" class="text-sm text-slate-600 mb-4"></p>
@@ -287,7 +290,7 @@
     </div>
    </div>
   </div><!-- Progress Modal -->
-  <div id="progress-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div id="progress-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] hidden">
    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl text-center">
     <p id="progress-title" class="font-bold text-slate-800 mb-3">กำลังบันทึก...</p>
     <div style="background:#e5e7eb;border-radius:999px;height:10px;overflow:hidden;">
@@ -971,8 +974,8 @@ function renderCurrentSchedulePage() {
     </div>
     <div class="mb-6 p-4 bg-white" style="display:flex;justify-content:center;margin-top:10px;border:3px solid #111;position:relative;">
       <span style="position:absolute;top:8px;right:12px;line-height:1;opacity:0.75;">${sportIconMarkup}</span>
-      <div style="width:485px;height:280px;overflow:hidden;position:relative;">
-        <div style="width:780px;height:480px;transform:scale(0.5833);transform-origin:top left;position:absolute;top:0;left:0;">
+      <div class="diagram-clip-box" style="width:485px;height:280px;overflow:hidden;position:relative;">
+        <div class="diagram-scale-wrapper" style="width:780px;height:480px;transform:scale(0.5833);transform-origin:top left;position:absolute;top:0;left:0;">
         <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/></svg>
 
         <div class="absolute flex flex-col" style="left:0;top:0px;"><span class="text-[14px] text-slate-400 ml-4 mb-1">ทีมวาง</span><div class="flex items-center gap-1"><span class="text-sm font-bold text-slate-500">1</span>${snapSlot('r1-1')}</div></div>
@@ -1135,10 +1138,20 @@ async function renderPresetList() {
     container.innerHTML = '<p class="text-sm text-red-400 text-center py-3">ยังไม่ได้ตั้งค่าเชื่อมต่อ Google Sheets</p>';
     return;
   }
-  container.innerHTML = '<p class="text-sm text-slate-400 text-center py-3">กำลังโหลด...</p>';
+  container.innerHTML = '<div class="py-3"><div style="background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;"><div id="preset-list-loading-bar" style="background:#2563eb;height:100%;width:0%;transition:width 0.2s;border-radius:999px;"></div></div><p id="preset-list-loading-time" class="text-xs text-slate-400 text-center mt-2">กำลังโหลด... 0.0 วินาที</p></div>';
+  const loadStart = Date.now();
+  const loadingBar = document.getElementById('preset-list-loading-bar');
+  const loadingTime = document.getElementById('preset-list-loading-time');
+  let fakePercent = 0;
+  const loadingInterval = setInterval(() => {
+    fakePercent = Math.min(fakePercent + Math.random() * 12, 90);
+    if (loadingBar) loadingBar.style.width = fakePercent + '%';
+    if (loadingTime) loadingTime.textContent = 'กำลังโหลด... ' + ((Date.now() - loadStart) / 1000).toFixed(1) + ' วินาที';
+  }, 200);
   try {
     const res = await fetch(SHEET_API_URL + '?action=listPresets');
     const list = await res.json();
+    clearInterval(loadingInterval);
     container.innerHTML = '';
     if (list.length === 0) {
       container.innerHTML = '<p class="text-sm text-slate-400 text-center py-3">ยังไม่มีรายการที่บันทึกไว้</p>';
@@ -1167,6 +1180,7 @@ async function renderPresetList() {
       container.appendChild(row);
     });
   } catch (e) {
+    clearInterval(loadingInterval);
     container.innerHTML = '<p class="text-sm text-red-400 text-center py-3">โหลดรายการไม่สำเร็จ</p>';
   }
 }
@@ -1259,13 +1273,36 @@ function trimCanvas(canvas, tolerance = 8) {
   return out;
 }
 
+// html2canvas บางเวอร์ชันวางตำแหน่งลูกที่เป็น position:absolute ผิดเพี้ยน เมื่ออยู่ใน ancestor ที่มี CSS transform:scale
+// แก้โดยปลด transform ออกชั่วคราว ขยายกรอบ clip ให้พอดีขนาดจริง แล้วค่อยคืนค่ากลับหลัง capture เสร็จ
+function neutralizeDiagramScaleForCapture(el) {
+  const scaleWrapper = el.querySelector('.diagram-scale-wrapper');
+  const clipBox = el.querySelector('.diagram-clip-box');
+  if (!scaleWrapper || !clipBox) return () => {};
+  const prevTransform = scaleWrapper.style.transform;
+  const prevClipWidth = clipBox.style.width;
+  const prevClipHeight = clipBox.style.height;
+  const prevOverflow = clipBox.style.overflow;
+  scaleWrapper.style.transform = 'none';
+  clipBox.style.width = scaleWrapper.style.width || '780px';
+  clipBox.style.height = scaleWrapper.style.height || '480px';
+  clipBox.style.overflow = 'visible';
+  return function restore() {
+    scaleWrapper.style.transform = prevTransform;
+    clipBox.style.width = prevClipWidth;
+    clipBox.style.height = prevClipHeight;
+    clipBox.style.overflow = prevOverflow;
+  };
+}
 async function captureTrimmedCanvas(el) {
   const restoreDateInputs = swapDateInputsForCapture(el);
+  const restoreDiagramScale = neutralizeDiagramScaleForCapture(el);
   let canvas;
   try {
     canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
   } finally {
     restoreDateInputs();
+    restoreDiagramScale();
   }
   return trimCanvas(canvas);
 }
