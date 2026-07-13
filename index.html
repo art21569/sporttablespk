@@ -1341,6 +1341,11 @@ async function captureTrimmedCanvas(el) {
   const restoreDateInputs = swapDateInputsForCapture(el);
   let canvas;
   try {
+    // รอให้ฟอนต์ (Kanit) โหลดเสร็จสมบูรณ์ก่อน ไม่งั้น html2canvas อาจวัดขนาด/ตำแหน่งข้อความผิดโดยใช้ฟอนต์สำรองแทน ทำให้ตำแหน่งใน export ไม่ตรงกับที่เห็นบนจอ
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
+    await new Promise(requestAnimationFrame); // ให้เบราว์เซอร์ paint เลย์เอาต์ล่าสุดก่อนแคปจริง
     canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
   } finally {
     restoreDateInputs();
