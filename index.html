@@ -38,6 +38,9 @@
     .bracket-slot-snapshot { width: 120px; height: 44px; border: 2px dashed #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; position: relative; }
     .bracket-slot-snapshot.filled { border-style: solid; border-color: #475569; }
     .bracket-slot-snapshot[data-watermark]::after { content: attr(data-watermark); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.2); font-size: 11px; font-weight: 600; text-align: center; pointer-events: none; }
+    .bracket-slot-mini { width: 70px; height: 25.7px; border: 1px solid #94a3b8; border-radius: 3.5px; display: flex; align-items: center; justify-content: center; font-size: 9.3px; position: relative; box-sizing: border-box; }
+    .bracket-slot-mini.filled { border-style: solid; border-color: #475569; }
+    .bracket-slot-mini[data-watermark]::after { content: attr(data-watermark); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(0,0,0,0.2); font-size: 6px; font-weight: 600; text-align: center; pointer-events: none; }
     .nav-arrow { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #1e293b; color: #fff; border-radius: 50%; font-size: 24px; cursor: pointer; user-select: none; transition: background 0.2s; }
     .nav-arrow:hover { background: #334155; }
     .nav-arrow.disabled { opacity: 0.3; cursor: default; }
@@ -899,6 +902,26 @@ function buildAllSchedulePages() {
   }
 }
 
+// คำนวณทีมที่ตกรอบจากข้อมูลที่บันทึกไว้ (สำหรับหน้าโปรแกรมการแข่งขัน/export ซึ่งไม่ได้อ่านจาก DOM สดของหน้าจับสลาก)
+function computeEliminatedTeams(data) {
+  const matchMap = [
+    { target: 'm1', feeders: ['r1-2', 'r1-3'] },
+    { target: 'm2', feeders: ['r1-4', 'r1-5'] },
+    { target: 'sf-1', feeders: ['r1-1', 'm1'] },
+    { target: 'sf-2', feeders: ['r1-6', 'm2'] },
+    { target: 'final', feeders: ['sf-1', 'sf-2'] }
+  ];
+  const eliminated = new Set();
+  matchMap.forEach(({ target, feeders }) => {
+    const winner = data[target];
+    if (!winner) return;
+    feeders.forEach(feederId => {
+      const feederTeam = data[feederId];
+      if (feederTeam && feederTeam !== winner) eliminated.add(feederTeam);
+    });
+  });
+  return eliminated;
+}
 function renderCurrentSchedulePage() {
   const container = document.getElementById('schedule-pages-container');
   const page = schedulePages[currentScheduleIdx];
@@ -914,17 +937,20 @@ function renderCurrentSchedulePage() {
   });
 
   const matches = [
-    { pair:1, round:'แรก', t1:slots['r1-2']||'', t2:slots['r1-3']||'', c1:slotColors['r1-2']||'', c2:slotColors['r1-3']||'' },
-    { pair:2, round:'แรก', t1:slots['r1-4']||'', t2:slots['r1-5']||'', c1:slotColors['r1-4']||'', c2:slotColors['r1-5']||'' },
-    { pair:3, round:'รอง', t1:slots['m1']||'ผู้ชนะคู่ที่ 1', t2:slots['r1-1']||'', c1:slotColors['m1']||'', c2:slotColors['r1-1']||'' },
-    { pair:4, round:'รอง', t1:slots['r1-6']||'', t2:slots['m2']||'ผู้ชนะคู่ที่ 2', c1:slotColors['r1-6']||'', c2:slotColors['m2']||'' },
-    { pair:5, round:'ชิงชนะเลิศ', t1:slots['sf-1']||'ผู้ชนะคู่ที่ 3', t2:slots['sf-2']||'ผู้ชนะคู่ที่ 4', c1:slotColors['sf-1']||'', c2:slotColors['sf-2']||'' },
+    { pair:1, round:'แรก', t1:slots['r1-2']||'', t2:slots['r1-3']||'', c1:slotColors['r1-2']||'', c2:slotColors['r1-3']||'', tid1:page.data['r1-2'], tid2:page.data['r1-3'] },
+    { pair:2, round:'แรก', t1:slots['r1-4']||'', t2:slots['r1-5']||'', c1:slotColors['r1-4']||'', c2:slotColors['r1-5']||'', tid1:page.data['r1-4'], tid2:page.data['r1-5'] },
+    { pair:3, round:'รอง', t1:slots['m1']||'ผู้ชนะคู่ที่ 1', t2:slots['r1-1']||'', c1:slotColors['m1']||'', c2:slotColors['r1-1']||'', tid1:page.data['m1'], tid2:page.data['r1-1'] },
+    { pair:4, round:'รอง', t1:slots['r1-6']||'', t2:slots['m2']||'ผู้ชนะคู่ที่ 2', c1:slotColors['r1-6']||'', c2:slotColors['m2']||'', tid1:page.data['r1-6'], tid2:page.data['m2'] },
+    { pair:5, round:'ชิงชนะเลิศ', t1:slots['sf-1']||'ผู้ชนะคู่ที่ 3', t2:slots['sf-2']||'ผู้ชนะคู่ที่ 4', c1:slotColors['sf-1']||'', c2:slotColors['sf-2']||'', tid1:page.data['sf-1'], tid2:page.data['sf-2'] },
   ];
+  const eliminatedTeams = computeEliminatedTeams(page.data);
 
   const extras = getExtrasForCombo(page.sport, page.gender, page.level);
   let tableRows = matches.map((m, idx) => {
-    const s1 = m.c1 ? 'background:'+m.c1+';color:#fff;font-weight:600;' : '';
-    const s2 = m.c2 ? 'background:'+m.c2+';color:#fff;font-weight:600;' : '';
+    const elim1 = m.tid1 && eliminatedTeams.has(m.tid1);
+    const elim2 = m.tid2 && eliminatedTeams.has(m.tid2);
+    const s1 = m.c1 ? (elim1 ? 'background:#cbd5e1;color:#64748b;font-weight:600;filter:grayscale(100%);opacity:0.75;' : 'background:'+m.c1+';color:#fff;font-weight:600;') : '';
+    const s2 = m.c2 ? (elim2 ? 'background:#cbd5e1;color:#64748b;font-weight:600;filter:grayscale(100%);opacity:0.75;' : 'background:'+m.c2+';color:#fff;font-weight:600;') : '';
     const isAdmin = currentMode === 'admin';
     const editable = isAdmin ? ' contenteditable="true"' : '';
     const ex = extras[idx];
@@ -944,9 +970,14 @@ function renderCurrentSchedulePage() {
   function snapSlot(id) {
     const filled = slots[id];
     const watermarks = { 'm1':'ผู้ชนะคู่ที่ 1','m2':'ผู้ชนะคู่ที่ 2','sf-1':'ผู้ชนะคู่ที่ 3','sf-2':'ผู้ชนะคู่ที่ 4','final':'ชนะเลิศ' };
-    if (filled) return '<div class="bracket-slot-snapshot filled" style="background:'+slotColors[id]+';color:#fff;font-weight:600;">'+filled+'</div>';
+    if (filled) {
+      const teamId = page.data[id];
+      const isElim = teamId && eliminatedTeams.has(teamId);
+      const style = isElim ? 'background:#cbd5e1;color:#64748b;font-weight:600;filter:grayscale(100%);opacity:0.75;' : 'background:'+slotColors[id]+';color:#fff;font-weight:600;';
+      return '<div class="bracket-slot-mini filled" style="'+style+'">'+filled+'</div>';
+    }
     const wm = watermarks[id] ? ' data-watermark="'+watermarks[id]+'"' : '';
-    return '<div class="bracket-slot-snapshot"'+wm+'></div>';
+    return '<div class="bracket-slot-mini"'+wm+'></div>';
   }
 
   const sportIconImgs = {
@@ -975,31 +1006,28 @@ function renderCurrentSchedulePage() {
     </div>
     <div class="mb-6 p-4 bg-white" style="display:flex;justify-content:center;margin-top:10px;border:3px solid #111;position:relative;">
       <span style="position:absolute;top:8px;right:12px;line-height:1;opacity:0.75;">${sportIconMarkup}</span>
-      <div class="diagram-clip-box" style="width:485px;height:280px;overflow:hidden;position:relative;">
-        <div class="diagram-scale-wrapper" style="width:780px;height:480px;transform:scale(0.5833);transform-origin:top left;position:absolute;top:0;left:0;">
-        <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 780 460"><path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/></svg>
-
-        <div class="absolute flex flex-col" style="left:0;top:0px;"><span class="text-[14px] text-slate-400 ml-4 mb-1">ทีมวาง</span><div class="flex items-center gap-1"><span class="text-sm font-bold text-slate-500">1</span>${snapSlot('r1-1')}</div></div>
-        <div class="absolute flex items-center gap-1" style="left:0;top:98px;"><span class="text-sm font-bold text-slate-500">2</span>${snapSlot('r1-2')}</div>
-        <div class="absolute flex items-center gap-1" style="left:0;top:178px;"><span class="text-sm font-bold text-slate-500">3</span>${snapSlot('r1-3')}</div>
-        <div class="absolute flex items-center gap-1" style="left:0;top:248px;"><span class="text-sm font-bold text-slate-500">4</span>${snapSlot('r1-4')}</div>
-        <div class="absolute flex items-center gap-1" style="left:0;top:328px;"><span class="text-sm font-bold text-slate-500">5</span>${snapSlot('r1-5')}</div>
-        <div class="absolute flex flex-col" style="left:0;top:408px;"><div class="flex items-center gap-1"><span class="text-sm font-bold text-slate-500">6</span>${snapSlot('r1-6')}</div><span class="text-[14px] text-slate-400 ml-4">ทีมวาง</span></div>
-        <div class="absolute" style="left:150px;top:140px;"><span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 1</span></div>
-        <div class="absolute" style="left:280px;top:138px;">${snapSlot('m1')}</div>
-        <div class="absolute" style="left:150px;top:290px;"><span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 2</span></div>
-        <div class="absolute" style="left:280px;top:288px;">${snapSlot('m2')}</div>
-        <div class="absolute" style="left:405px;top:95px;"><span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 3</span></div>
-        <div class="absolute" style="left:510px;top:93px;">${snapSlot('sf-1')}</div>
-        <div class="absolute" style="left:405px;top:335px;"><span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded">คู่ที่ 4</span></div>
-        <div class="absolute" style="left:510px;top:333px;">${snapSlot('sf-2')}</div>
-        <div class="absolute" style="left:550px;top:225px;"><span class="text-sm font-bold text-slate-600 bg-white px-2 py-1 rounded">รอบชิงชนะเลิศ</span></div>
-        <div class="absolute" style="left:701.4px;top:205.65px;">${snapSlot('final')}</div>
-        </div>
+      <div class="diagram-clip-box" style="width:490px;height:280px;position:relative;overflow:visible;">
+        <svg style="position:absolute;top:0;left:0;width:455px;height:268.3px;pointer-events:none;" viewBox="0 0 780 460"><path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/></svg>
+        <div class="absolute flex flex-col" style="left:0;top:0px;"><span style="font-size:8.2px;color:#94a3b8;margin-left:9px;margin-bottom:2px;">ทีมวาง</span><div class="flex items-center" style="gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">1</span>${snapSlot('r1-1')}</div></div>
+        <div class="absolute flex items-center" style="left:0;top:57.2px;gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">2</span>${snapSlot('r1-2')}</div>
+        <div class="absolute flex items-center" style="left:0;top:103.8px;gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">3</span>${snapSlot('r1-3')}</div>
+        <div class="absolute flex items-center" style="left:0;top:144.7px;gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">4</span>${snapSlot('r1-4')}</div>
+        <div class="absolute flex items-center" style="left:0;top:191.3px;gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">5</span>${snapSlot('r1-5')}</div>
+        <div class="absolute flex flex-col" style="left:0;top:238px;"><div class="flex items-center" style="gap:2px;"><span style="font-size:8.2px;font-weight:700;color:#64748b;">6</span>${snapSlot('r1-6')}</div><span style="font-size:8.2px;color:#94a3b8;margin-left:9px;">ทีมวาง</span></div>
+        <div class="absolute" style="left:87.5px;top:81.7px;"><span style="font-size:8.2px;font-weight:700;color:#475569;background:#fff;padding:2px 4.7px;border-radius:4px;">คู่ที่ 1</span></div>
+        <div class="absolute" style="left:163.3px;top:80.5px;">${snapSlot('m1')}</div>
+        <div class="absolute" style="left:87.5px;top:169.2px;"><span style="font-size:8.2px;font-weight:700;color:#475569;background:#fff;padding:2px 4.7px;border-radius:4px;">คู่ที่ 2</span></div>
+        <div class="absolute" style="left:163.3px;top:168px;">${snapSlot('m2')}</div>
+        <div class="absolute" style="left:236.3px;top:55.4px;"><span style="font-size:8.2px;font-weight:700;color:#475569;background:#fff;padding:2px 4.7px;border-radius:4px;">คู่ที่ 3</span></div>
+        <div class="absolute" style="left:297.5px;top:54.3px;">${snapSlot('sf-1')}</div>
+        <div class="absolute" style="left:236.3px;top:195.4px;"><span style="font-size:8.2px;font-weight:700;color:#475569;background:#fff;padding:2px 4.7px;border-radius:4px;">คู่ที่ 4</span></div>
+        <div class="absolute" style="left:297.5px;top:194.3px;">${snapSlot('sf-2')}</div>
+        <div class="absolute" style="left:320.8px;top:131.3px;"><span style="font-size:8.2px;font-weight:700;color:#475569;background:#fff;padding:2px 4.7px;border-radius:4px;">รอบชิงชนะเลิศ</span></div>
+        <div class="absolute" style="left:409.2px;top:120px;">${snapSlot('final')}</div>
       </div>
     </div>
     <table class="schedule-table"><thead><tr><th style="width:6%;">คู่ที่</th><th style="width:13%;">ทีม</th><th style="width:5%;">VS</th><th style="width:13%;">ทีม</th><th style="width:11%;">รอบ</th><th style="width:15%;">วัน/เดือน/ปี</th><th style="width:16%;">สนาม</th><th style="width:21%;">หมายเหตุ</th></tr></thead><tbody>${tableRows}</tbody></table>
-    <p style="margin-top:0.2cm;font-size:12px;color:#64748b;">หมายเหตุ : โปรแกรมการแข่งขันสามารถเปลี่ยนแปลงได้ขึ้นอยู่กับดุลพินิจของกรรมการแต่ละสนาม</p>
+    <p style="margin-top:0.2cm;font-size:12px;color:#64748b;text-align:center;">* หมายเหตุ : โปรแกรมอาจมีการเปลี่ยนแปลงได้ตามความเหมาะสม ขึ้นอยู่กับดุลยพินิจของคณะกรรมการ *</p>
   </div>`;
 
   // Update navigation
@@ -1309,36 +1337,13 @@ function trimCanvas(canvas, tolerance = 8) {
   return out;
 }
 
-// html2canvas บางเวอร์ชันวางตำแหน่งลูกที่เป็น position:absolute ผิดเพี้ยน เมื่ออยู่ใน ancestor ที่มี CSS transform:scale
-// แก้โดยปลด transform ออกชั่วคราว ขยายกรอบ clip ให้พอดีขนาดจริง แล้วค่อยคืนค่ากลับหลัง capture เสร็จ
-function neutralizeDiagramScaleForCapture(el) {
-  const scaleWrapper = el.querySelector('.diagram-scale-wrapper');
-  const clipBox = el.querySelector('.diagram-clip-box');
-  if (!scaleWrapper || !clipBox) return () => {};
-  const prevTransform = scaleWrapper.style.transform;
-  const prevClipWidth = clipBox.style.width;
-  const prevClipHeight = clipBox.style.height;
-  const prevOverflow = clipBox.style.overflow;
-  scaleWrapper.style.transform = 'none';
-  clipBox.style.width = scaleWrapper.style.width || '780px';
-  clipBox.style.height = scaleWrapper.style.height || '480px';
-  clipBox.style.overflow = 'visible';
-  return function restore() {
-    scaleWrapper.style.transform = prevTransform;
-    clipBox.style.width = prevClipWidth;
-    clipBox.style.height = prevClipHeight;
-    clipBox.style.overflow = prevOverflow;
-  };
-}
 async function captureTrimmedCanvas(el) {
   const restoreDateInputs = swapDateInputsForCapture(el);
-  const restoreDiagramScale = neutralizeDiagramScaleForCapture(el);
   let canvas;
   try {
     canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
   } finally {
     restoreDateInputs();
-    restoreDiagramScale();
   }
   return trimCanvas(canvas);
 }
