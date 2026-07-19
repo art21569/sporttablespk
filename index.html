@@ -504,7 +504,7 @@ function escapeXML(str) {
 function buildTableSVG(table) {
   const headerCells = Array.from(table.querySelectorAll('thead th'));
   const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
-  const totalWidth = 780;
+  const totalWidth = 680;
   const headerHeight = 34;
   const rowHeight = 34;
   const widths = headerCells.map(th => totalWidth * (parseFloat(th.style.width) || (100 / headerCells.length)) / 100);
@@ -1123,9 +1123,9 @@ function renderCurrentSchedulePage() {
         <p class="text-sm font-semibold text-slate-600">การแข่งขันกีฬาคณะสี โรงเรียนเสลภูมิพิทยาคม ประจำปี 2569</p>
       </div>
     </div>
-    <div class="mb-6 p-4 bg-white" style="margin-left:auto;margin-right:auto;margin-top:10px;border:3px solid #111;position:relative;width:fit-content;">
+    <div class="mb-6 p-4 bg-white" style="margin-top:10px;border:3px solid #111;position:relative;text-align:center;">
       <span style="position:absolute;top:8px;right:12px;line-height:1;">${sportIconMarkup}</span>
-      <svg width="484" height="280" viewBox="0 0 830 480" style="display:block;">
+      <svg width="484" height="280" viewBox="0 0 830 480" style="display:inline-block;">
         <path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/>
         <text x="6" y="40" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="700" fill="#64748b">1</text>
         <text x="16" y="9" text-anchor="start" dominant-baseline="central" font-size="13" fill="#94a3b8">ทีมวาง</text>
