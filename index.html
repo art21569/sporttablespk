@@ -364,10 +364,20 @@ function defaultExtrasArray(sport) {
   const defaultVenue = VENUE_BY_SPORT[sport] || '';
   return [0, 1, 2, 3, 4].map(() => ({ date: '', venue: defaultVenue, note: '' }));
 }
-// รวมช่องจับสลาก (จาก DOM) + ข้อมูลวัน/สนาม/หมายเหตุต่อคู่ ให้เป็นก้อนเดียวสำหรับส่งไปเก็บใน Sheet (ใช้ schema เดิม ไม่ต้องแก้ Apps Script)
+// รวมช่องจับสลาก (จาก DOM ของหน้าจับสลากที่กำลังเปิดอยู่) + ข้อมูลวัน/สนาม/หมายเหตุต่อคู่ ให้เป็นก้อนเดียวสำหรับส่งไปเก็บใน Sheet
+// ใช้ตอน saveCurrentDraw() เท่านั้น เพราะตอนนั้นมั่นใจได้ว่า DOM ของหน้าจับสลากตรงกับ key ที่กำลังจะบันทึก
 function buildComboSheetData(key) {
   const data = {};
   document.querySelectorAll('#bracket-page .bracket-slot').forEach(s => { if (s.dataset.filledTeam) data[s.dataset.slot] = s.dataset.filledTeam; });
+  const [sport, gender, level] = key.split('|');
+  const extras = getExtrasForCombo(sport, gender, level);
+  extras.forEach((ex, i) => { data['extra-' + (i + 1)] = JSON.stringify(ex); });
+  return data;
+}
+// รวมช่องจับสลาก (จาก savedDraws ที่บันทึกไว้แล้ว ไม่ใช่ DOM สด) + ข้อมูลวัน/สนาม/หมายเหตุ
+// ใช้ตอนแก้ไขวัน/สนาม/หมายเหตุจากหน้าโปรแกรมแข่งขัน เพราะตอนนั้นหน้าจับสลากอาจกำลังโชว์คนละคู่กันอยู่ ถ้าไปอ่าน DOM ของหน้าจับสลากจะได้ข้อมูลผิดคู่
+function buildComboSheetDataFromSaved(key) {
+  const data = { ...(savedDraws[key] || {}) };
   const [sport, gender, level] = key.split('|');
   const extras = getExtrasForCombo(sport, gender, level);
   extras.forEach((ex, i) => { data['extra-' + (i + 1)] = JSON.stringify(ex); });
@@ -454,12 +464,17 @@ function getExtrasForCombo(sport, gender, level) {
   }
   return scheduleExtras[key];
 }
+const updateExtraTimers = {};
 function updateExtra(sport, gender, level, idx, field, value) {
   const arr = getExtrasForCombo(sport, gender, level);
   arr[idx][field] = value;
   saveScheduleExtras();
   const key = sport + '|' + gender + '|' + level;
-  saveComboToSheet(key, buildComboSheetData(key));
+  const timerKey = key + '|' + idx;
+  clearTimeout(updateExtraTimers[timerKey]);
+  updateExtraTimers[timerKey] = setTimeout(() => {
+    saveComboToSheet(key, buildComboSheetDataFromSaved(key));
+  }, 700);
 }
 function formatThaiDate(isoDate) {
   if (!isoDate) return 'TBD';
@@ -480,6 +495,56 @@ function swapDateInputsForCapture(el) {
   });
   return function restore() {
     replacements.forEach(({ span, input }) => { if (span.parentNode) span.parentNode.replaceChild(input, span); });
+  };
+}
+function escapeXML(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+// สร้างตารางเป็น SVG ล้วนๆ จากค่าปัจจุบันใน DOM (เอาไว้ใช้แทนตอน capture ภาพเท่านั้น) วิธีนี้แก้ปัญหาตำแหน่ง/การจัดกึ่งกลางของข้อความในตาราง export ไม่ตรงกับหน้าเว็บ เพราะ SVG text ใช้พิกัดตรงๆ ไม่ต้องพึ่งการคำนวณ layout ของตารางที่ html2canvas ทำได้ไม่แม่นยำ
+function buildTableSVG(table) {
+  const headerCells = Array.from(table.querySelectorAll('thead th'));
+  const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+  const totalWidth = 780;
+  const headerHeight = 34;
+  const rowHeight = 34;
+  const widths = headerCells.map(th => totalWidth * (parseFloat(th.style.width) || (100 / headerCells.length)) / 100);
+  let svg = '';
+  let x = 0;
+  headerCells.forEach((th, i) => {
+    svg += '<rect x="'+x+'" y="0" width="'+widths[i]+'" height="'+headerHeight+'" fill="#1e293b" stroke="#334155" stroke-width="1.5"/>';
+    svg += '<text x="'+(x + widths[i]/2)+'" y="'+(headerHeight/2)+'" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff">'+escapeXML(th.textContent.trim())+'</text>';
+    x += widths[i];
+  });
+  let y = headerHeight;
+  bodyRows.forEach(tr => {
+    const cells = Array.from(tr.children);
+    x = 0;
+    cells.forEach((td, i) => {
+      const w = widths[i] || (totalWidth / cells.length);
+      const bg = td.style.background || '#ffffff';
+      const color = td.style.color || '#0f172a';
+      const text = td.textContent.trim();
+      svg += '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+rowHeight+'" fill="'+bg+'" stroke="#334155" stroke-width="1.5"/>';
+      if (text) svg += '<text x="'+(x + w/2)+'" y="'+(y + rowHeight/2)+'" text-anchor="middle" dominant-baseline="central" font-size="13" font-weight="600" fill="'+color+'">'+escapeXML(text)+'</text>';
+      x += w;
+    });
+    y += rowHeight;
+  });
+  const totalHeight = y;
+  return '<svg width="'+totalWidth+'" height="'+totalHeight+'" viewBox="0 0 '+totalWidth+' '+totalHeight+'" style="display:block;">'+svg+'</svg>';
+}
+function swapTableForCapture(el) {
+  const table = el.querySelector('.schedule-table');
+  if (!table) return function () {};
+  const svgMarkup = buildTableSVG(table);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = svgMarkup;
+  table.parentNode.insertBefore(wrapper, table);
+  const prevDisplay = table.style.display;
+  table.style.display = 'none';
+  return function restore() {
+    wrapper.remove();
+    table.style.display = prevDisplay;
   };
 }
 let currentScheduleIdx = 0;
@@ -1047,19 +1112,19 @@ function renderCurrentSchedulePage() {
   };
   const sportIconSizeOverrides = { 'เปตอง': 94 };
   const sportIconMarkup = sportIconImgs[page.sport]
-    ? '<img src="'+sportIconImgs[page.sport]+'" width="'+(sportIconSizeOverrides[page.sport] || 104)+'" height="'+(sportIconSizeOverrides[page.sport] || 104)+'" style="opacity:0.7;object-fit:contain;">'
+    ? '<img src="'+sportIconImgs[page.sport]+'" width="'+(sportIconSizeOverrides[page.sport] || 104)+'" height="'+(sportIconSizeOverrides[page.sport] || 104)+'" style="object-fit:contain;">'
     : '';
 
   container.innerHTML = `<div class="a4-page" id="a4-content">
-    <div class="flex items-center justify-center mb-2">
-      ${cornerLogoSrc ? '<img src="'+cornerLogoSrc+'" style="width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.18));flex-shrink:0;margin-right:0.3cm;">' : ''}
-      <div class="text-center">
+    <div class="mb-2" style="text-align:center;">
+      ${cornerLogoSrc ? '<img src="'+cornerLogoSrc+'" style="display:inline-block;vertical-align:middle;width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.18));margin-right:0.3cm;">' : ''}
+      <div style="display:inline-block;vertical-align:middle;text-align:center;">
         <h2 class="text-lg font-bold text-slate-900 mb-1">${header}</h2>
         <p class="text-sm font-semibold text-slate-600">การแข่งขันกีฬาคณะสี โรงเรียนเสลภูมิพิทยาคม ประจำปี 2569</p>
       </div>
     </div>
-    <div class="mb-6 p-4 bg-white" style="display:flex;justify-content:center;margin-top:10px;border:3px solid #111;position:relative;">
-      <span style="position:absolute;top:8px;right:12px;line-height:1;opacity:0.75;">${sportIconMarkup}</span>
+    <div class="mb-6 p-4 bg-white" style="margin-left:auto;margin-right:auto;margin-top:10px;border:3px solid #111;position:relative;width:fit-content;">
+      <span style="position:absolute;top:8px;right:12px;line-height:1;">${sportIconMarkup}</span>
       <svg width="484" height="280" viewBox="0 0 830 480" style="display:block;">
         <path class="connector" d="M135,40 H480 V100"/><path class="connector" d="M135,120 H220"/><path class="connector" d="M135,200 H220"/><path class="connector" d="M220,120 V160 H280"/><path class="connector" d="M220,200 V160"/><path class="connector" d="M400,160 H480 V130"/><path class="connector" d="M480,100 V130"/><path class="connector" d="M480,115 H510"/><path class="connector" d="M630,115 H660 V210"/><path class="connector" d="M135,270 H220"/><path class="connector" d="M135,350 H220"/><path class="connector" d="M220,270 V310 H280"/><path class="connector" d="M220,350 V310"/><path class="connector" d="M400,310 H480 V340"/><path class="connector" d="M135,430 H480 V370"/><path class="connector" d="M480,340 V370"/><path class="connector" d="M480,355 H510"/><path class="connector" d="M630,355 H660 V250"/><path class="connector" d="M660,210 V250"/><path class="connector" d="M660,230 H700"/>
         <text x="6" y="40" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="700" fill="#64748b">1</text>
@@ -1416,6 +1481,7 @@ function trimCanvas(canvas, tolerance = 8) {
 
 async function captureTrimmedCanvas(el) {
   const restoreDateInputs = swapDateInputsForCapture(el);
+  const restoreTable = swapTableForCapture(el);
   let canvas;
   try {
     // รอให้ฟอนต์ (Kanit) โหลดเสร็จสมบูรณ์ก่อน ไม่งั้น html2canvas อาจวัดขนาด/ตำแหน่งข้อความผิดโดยใช้ฟอนต์สำรองแทน ทำให้ตำแหน่งใน export ไม่ตรงกับที่เห็นบนจอ
@@ -1425,6 +1491,7 @@ async function captureTrimmedCanvas(el) {
     await new Promise(requestAnimationFrame); // ให้เบราว์เซอร์ paint เลย์เอาต์ล่าสุดก่อนแคปจริง
     canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false });
   } finally {
+    restoreTable();
     restoreDateInputs();
   }
   return trimCanvas(canvas);
