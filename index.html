@@ -322,7 +322,7 @@ const ADMIN_PIN = '21569';
 
 // ===== เชื่อมกับ Google Sheets (ผ่าน Apps Script Web App) =====
 // วาง URL ที่ได้จากตอน Deploy Apps Script (ลงท้ายด้วย /exec) แทนบรรทัดด้านล่าง
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbyRYPRI3Ri-nekTfZteBJCf_vn-kI4oNno--gvJkYo/dev';
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx8YV5KDU-4ClQrsBudf-xvRlMNGlR_vpwmz4YD9J2qu7QTXrkIJwP1OsSrExujsn2V/exec';
 
 // ผู้ชมจะดึงข้อมูลล่าสุดอัตโนมัติทุก 4 วินาที (ไม่ต้องกดรีเฟรชเอง) ฝั่งผู้ดูแลไม่ต้อง เพราะเห็นการเปลี่ยนแปลงของตัวเองอยู่แล้วทันที
 setInterval(() => { if (currentMode === 'viewer') loadDrawsFromSheet(); }, 4000);
