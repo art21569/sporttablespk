@@ -322,22 +322,49 @@ const ADMIN_PIN = '21569';
 
 // ===== เชื่อมกับ Google Sheets (ผ่าน Apps Script Web App) =====
 // วาง URL ที่ได้จากตอน Deploy Apps Script (ลงท้ายด้วย /exec) แทนบรรทัดด้านล่าง
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx8YV5KDU-4ClQrsBudf-xvRlMNGlR_vpwmz4YD9J2qu7QTXrkIJwP1OsSrExujsn2V/exec';
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzQp1R9eAd5vBzRoVnYK5Cuw2fXQBSHtiVqI1pppzQdEBDE66zZdJwUjRv4bHyEwUYZ/exec';
 
 // ผู้ชมจะดึงข้อมูลล่าสุดอัตโนมัติทุก 4 วินาที (ไม่ต้องกดรีเฟรชเอง) ฝั่งผู้ดูแลไม่ต้อง เพราะเห็นการเปลี่ยนแปลงของตัวเองอยู่แล้วทันที
 setInterval(() => { if (currentMode === 'viewer') loadDrawsFromSheet(); }, 4000);
 
-async function loadDrawsFromSheet() {
-  if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) return;
+const VALID_SLOT_IDS = ['r1-1','r1-2','r1-3','r1-4','r1-5','r1-6','m1','m2','sf-1','sf-2','final'];
+// กรองข้อมูลดิบจาก Sheet ให้เหลือเฉพาะช่อง/ทีมที่ถูกต้อง (ตัดแถวขยะที่ตกค้าง เช่น extra-N และตัดช่องว่างส่วนเกิน)
+function sanitizeSlots(raw) {
+  const clean = {};
+  Object.entries(raw || {}).forEach(([slotId, teamId]) => {
+    const s = String(slotId).trim(), t = String(teamId).trim();
+    if (VALID_SLOT_IDS.indexOf(s) !== -1 && teamData[t]) clean[s] = t;
+  });
+  return clean;
+}
+let localChangeCounter = 0;
+let initialSheetLoadDone = false;
+function setSelectsLocked(locked) {
+  ['sport-select', 'gender-select', 'level-select'].forEach(id => { const el = document.getElementById(id); if (el) el.disabled = locked; });
+}
+async function loadDrawsFromSheet(isInitial) {
+  if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) { initialSheetLoadDone = true; return; }
+  const counterAtStart = localChangeCounter;
+  const fetchStartedAt = Date.now();
+  // ตอนเข้าแอปครั้งแรก ล็อกตัวเลือกกีฬาไว้จนกว่าจะโหลดข้อมูลล่าสุดเสร็จ กันเผลอแก้ไขตอนที่ข้อมูลยังไม่มา แล้วไปบันทึกทับข้อมูลเดิมใน Sheet
+  if (isInitial) setSelectsLocked(true);
+  const failSafe = isInitial ? setTimeout(() => setSelectsLocked(false), 20000) : null;
   try {
     const res = await fetch(SHEET_API_URL);
     const data = await res.json();
+    // ถ้าระหว่างรอโหลดมีการแก้ไขในเครื่อง หรือยังมีคำสั่งบันทึกค้างส่ง/เพิ่งส่งเสร็จ ข้อมูลที่ได้มาอาจเก่ากว่าของในเครื่อง ไม่เอามาทับ
+    if (localChangeCounter !== counterAtStart || sheetOps.length || sheetOpRunning || lastSheetWriteAt >= fetchStartedAt) return;
     Object.keys(savedDraws).forEach(k => delete savedDraws[k]);
-    Object.entries(data).forEach(([key, slots]) => { savedDraws[key] = slots; });
+    Object.entries(data).forEach(([key, slots]) => {
+      const clean = sanitizeSlots(slots);
+      if (Object.keys(clean).length) savedDraws[key] = clean;
+    });
     const key = getComboKey();
     if (key) loadDraw(key);
   } catch (e) {
     console.error('โหลดข้อมูลจาก Sheets ไม่สำเร็จ:', e);
+  } finally {
+    if (isInitial) { initialSheetLoadDone = true; clearTimeout(failSafe); setSelectsLocked(false); }
   }
 }
 function defaultExtrasArray(sport) {
@@ -350,46 +377,62 @@ function buildComboSheetData(key) {
   return data;
 }
 
-async function saveComboToSheet(key, data) {
+// ===== คิวส่งคำสั่งไป Sheets: ส่งทีละคำสั่งตามลำดับเสมอ (กันคำสั่งเก่าไปถึงทีหลังแล้วทับของใหม่) และรวมคำสั่งบันทึกของคู่เดียวกันที่ยังไม่ได้ส่งให้เหลือสถานะล่าสุด =====
+let sheetOps = [];
+let sheetOpRunning = false;
+let lastSheetWriteAt = 0;
+function enqueueSheetOp(op) {
   if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) return;
-  const [sport, gender, level] = key.split('|');
+  localChangeCounter++;
+  if (op.type === 'resetAll') {
+    sheetOps = [];
+  } else if (op.type === 'resetOne') {
+    sheetOps = sheetOps.filter(o => o.key !== op.key);
+  } else if (op.type === 'save') {
+    const idx = sheetOps.findIndex(o => o.type === 'save' && o.key === op.key);
+    if (idx !== -1) { sheetOps[idx] = op; runSheetQueue(); return; }
+  }
+  sheetOps.push(op);
+  runSheetQueue();
+}
+async function postToSheet(body) {
+  const init = { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }; // text/plain เพื่อเลี่ยง CORS preflight ของ Apps Script
   try {
-    await fetch(SHEET_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' }, // ใช้ text/plain เพื่อเลี่ยง CORS preflight ของ Apps Script
-      body: JSON.stringify({ action: 'save', sport, gender, level, data })
-    });
+    return await fetch(SHEET_API_URL, Object.assign({ keepalive: true }, init)); // keepalive: ให้คำสั่งส่งต่อจนเสร็จแม้ปิดหน้าเว็บทันที
   } catch (e) {
-    console.error('บันทึกลง Sheets ไม่สำเร็จ:', e);
+    return await fetch(SHEET_API_URL, init);
   }
 }
-
-async function resetComboOnSheet(key) {
-  if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) return;
-  const [sport, gender, level] = key.split('|');
+async function runSheetQueue() {
+  if (sheetOpRunning) return;
+  sheetOpRunning = true;
   try {
-    await fetch(SHEET_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'resetOne', sport, gender, level })
-    });
-  } catch (e) {
-    console.error('รีเซ็ตใน Sheets ไม่สำเร็จ:', e);
+    while (sheetOps.length) {
+      const op = sheetOps.shift();
+      let body;
+      if (op.type === 'resetAll') {
+        body = { action: 'resetAll' };
+      } else {
+        const [sport, gender, level] = op.key.split('|');
+        body = op.type === 'save' ? { action: 'save', sport, gender, level, data: op.data } : { action: 'resetOne', sport, gender, level };
+      }
+      let ok = false;
+      for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+        try { await postToSheet(body); ok = true; } catch (e) { console.error('ส่งคำสั่งไป Sheets ไม่สำเร็จ (ลองใหม่):', e); await new Promise(r => setTimeout(r, 1500)); }
+      }
+      lastSheetWriteAt = Date.now();
+    }
+  } finally {
+    sheetOpRunning = false;
   }
 }
-
-async function resetAllOnSheet() {
-  if (!SHEET_API_URL || SHEET_API_URL.includes('PASTE_YOUR')) return;
-  try {
-    await fetch(SHEET_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'resetAll' })
-    });
-  } catch (e) {
-    console.error('รีเซ็ตทั้งหมดใน Sheets ไม่สำเร็จ:', e);
-  }
-}
+function saveComboToSheet(key, data) { enqueueSheetOp({ type: 'save', key: key, data: data }); }
+function resetComboOnSheet(key) { enqueueSheetOp({ type: 'resetOne', key: key }); }
+function resetAllOnSheet() { enqueueSheetOp({ type: 'resetAll' }); }
+// เตือนก่อนปิดหน้าเว็บ ถ้ายังมีคำสั่งบันทึกที่ส่งไป Sheets ไม่เสร็จ
+window.addEventListener('beforeunload', function (e) {
+  if (sheetOps.length || sheetOpRunning) { e.preventDefault(); e.returnValue = ''; }
+});
 // ===== จบส่วนเชื่อมกับ Google Sheets =====
 
 let currentMode = 'viewer'; // 'admin' or 'viewer'
@@ -558,7 +601,7 @@ function selectMode(mode) {
   }
   applyModeRestrictions();
   applyEventYear();
-  loadDrawsFromSheet();
+  loadDrawsFromSheet(true);
 }
 function showAdminPinInput() {
   currentPinMode = 'admin';
@@ -682,7 +725,7 @@ function loadDraw(key) {
   const data = savedDraws[key]; if (!data) return;
   Object.entries(data).forEach(([slotId, teamId]) => {
     const slot = document.querySelector('#bracket-page .bracket-slot[data-slot="' + slotId + '"]');
-    if (slot) { fillSlot(slot, teamId); hidePoolCard(teamId); }
+    if (slot && teamData[teamId]) { fillSlot(slot, teamId); hidePoolCard(teamId); }
   });
   updateEliminatedStyling();
 }
@@ -1276,7 +1319,7 @@ async function loadPreset(name) {
     const res = await fetch(SHEET_API_URL + '?action=loadPreset&name=' + encodeURIComponent(name));
     const data = await res.json();
     Object.keys(savedDraws).forEach(k => delete savedDraws[k]);
-    Object.entries(data).forEach(([key, slots]) => { savedDraws[key] = slots; });
+    Object.entries(data).forEach(([key, slots]) => { const clean = sanitizeSlots(slots); if (Object.keys(clean).length) savedDraws[key] = clean; });
     const key = getComboKey();
     if (key) loadDraw(key);
     closePresetModal();
