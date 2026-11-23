@@ -675,30 +675,31 @@ function updateLevelOptions() {
   if (key && levelOptions[key]) levelOptions[key].forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l; ls.appendChild(o); });
   ls.value = '';
 }
-// เทาสีทีมที่ไม่ผ่านเข้ารอบ เมื่อคู่แข่งของแมตช์เดียวกันถูกวางในรอบถัดไปแล้ว
-function updateEliminatedStyling() {
-  const matchMap = [
-    { target: 'm1', feeders: ['r1-2', 'r1-3'] },
-    { target: 'm2', feeders: ['r1-4', 'r1-5'] },
-    { target: 'sf-1', feeders: ['r1-1', 'm1'] },
-    { target: 'sf-2', feeders: ['r1-6', 'm2'] },
-    { target: 'final', feeders: ['sf-1', 'sf-2'] }
-  ];
-  const eliminated = new Set();
-  matchMap.forEach(({ target, feeders }) => {
-    const targetSlot = document.querySelector('#bracket-page .bracket-slot[data-slot="' + target + '"]');
-    if (!targetSlot || !targetSlot.dataset.filledTeam) return;
-    const winner = targetSlot.dataset.filledTeam;
-    feeders.forEach(feederId => {
-      const feederSlot = document.querySelector('#bracket-page .bracket-slot[data-slot="' + feederId + '"]');
-      if (feederSlot && feederSlot.dataset.filledTeam && feederSlot.dataset.filledTeam !== winner) {
-        eliminated.add(feederSlot.dataset.filledTeam);
-      }
-    });
+// แมตช์แต่ละคู่: ช่องรอบถัดไป (target) รับผู้ชนะมาจากช่องต้นทาง (feeders)
+const MATCH_FEEDERS = [
+  { target: 'm1', feeders: ['r1-2', 'r1-3'] },
+  { target: 'm2', feeders: ['r1-4', 'r1-5'] },
+  { target: 'sf-1', feeders: ['r1-1', 'm1'] },
+  { target: 'sf-2', feeders: ['r1-6', 'm2'] },
+  { target: 'final', feeders: ['sf-1', 'sf-2'] }
+];
+// หาช่องที่ "แพ้ในรอบนั้น": ช่องต้นทางของแมตช์ที่ตัดสินแล้ว (ช่องรอบถัดไปมีผู้ชนะ) ที่ทีมไม่ใช่ผู้ชนะ
+// ไฮไลท์เทาเฉพาะช่องที่แพ้จริงเท่านั้น ช่องของรอบก่อนหน้าที่ทีมนั้นเคยชนะมาแล้วจะคงสีเดิม
+function computeLostSlots(getTeam) {
+  const lost = new Set();
+  MATCH_FEEDERS.forEach(({ target, feeders }) => {
+    const winner = getTeam(target);
+    if (!winner) return;
+    if (!feeders.some(f => getTeam(f) === winner)) return; // ผู้ชนะไม่ได้มาจากคู่นี้ ข้อมูลไม่สอดคล้อง ไม่ตัดสิน
+    feeders.forEach(f => { const t = getTeam(f); if (t && t !== winner) lost.add(f); });
   });
+  return lost;
+}
+function updateEliminatedStyling() {
+  const getTeam = id => { const s = document.querySelector('#bracket-page .bracket-slot[data-slot="' + id + '"]'); return s ? s.dataset.filledTeam : undefined; };
+  const lost = computeLostSlots(getTeam);
   document.querySelectorAll('#bracket-page .bracket-slot').forEach(slot => {
-    const team = slot.dataset.filledTeam;
-    if (team && eliminated.has(team)) {
+    if (slot.dataset.filledTeam && lost.has(slot.dataset.slot)) {
       slot.style.filter = 'grayscale(100%)';
       slot.style.opacity = '0.45';
     } else {
@@ -1060,25 +1061,9 @@ function buildAllSchedulePages() {
   }
 }
 
-// คำนวณทีมที่ตกรอบจากข้อมูลที่บันทึกไว้ (สำหรับหน้าโปรแกรมการแข่งขัน/export ซึ่งไม่ได้อ่านจาก DOM สดของหน้าจับสลาก)
-function computeEliminatedTeams(data) {
-  const matchMap = [
-    { target: 'm1', feeders: ['r1-2', 'r1-3'] },
-    { target: 'm2', feeders: ['r1-4', 'r1-5'] },
-    { target: 'sf-1', feeders: ['r1-1', 'm1'] },
-    { target: 'sf-2', feeders: ['r1-6', 'm2'] },
-    { target: 'final', feeders: ['sf-1', 'sf-2'] }
-  ];
-  const eliminated = new Set();
-  matchMap.forEach(({ target, feeders }) => {
-    const winner = data[target];
-    if (!winner) return;
-    feeders.forEach(feederId => {
-      const feederTeam = data[feederId];
-      if (feederTeam && feederTeam !== winner) eliminated.add(feederTeam);
-    });
-  });
-  return eliminated;
+// หาช่องที่แพ้ในรอบนั้นจากข้อมูลที่บันทึกไว้ (สำหรับหน้าโปรแกรมการแข่งขัน/export ซึ่งไม่ได้อ่านจาก DOM สดของหน้าจับสลาก)
+function computeEliminatedSlots(data) {
+  return computeLostSlots(id => data[id]);
 }
 function renderCurrentSchedulePage() {
   const container = document.getElementById('schedule-pages-container');
@@ -1101,12 +1086,13 @@ function renderCurrentSchedulePage() {
     { pair:4, round:'รอง', t1:slots['r1-6']||'', t2:slots['m2']||'ผู้ชนะคู่ที่ 2', c1:slotColors['r1-6']||'', c2:slotColors['m2']||'', tid1:page.data['r1-6'], tid2:page.data['m2'] },
     { pair:5, round:'ชิงชนะเลิศ', t1:slots['sf-1']||'ผู้ชนะคู่ที่ 3', t2:slots['sf-2']||'ผู้ชนะคู่ที่ 4', c1:slotColors['sf-1']||'', c2:slotColors['sf-2']||'', tid1:page.data['sf-1'], tid2:page.data['sf-2'] },
   ];
-  const eliminatedTeams = computeEliminatedTeams(page.data);
+  const eliminatedSlots = computeEliminatedSlots(page.data);
+  const pairSlots = { 1: ['r1-2', 'r1-3'], 2: ['r1-4', 'r1-5'], 3: ['m1', 'r1-1'], 4: ['r1-6', 'm2'], 5: ['sf-1', 'sf-2'] };
 
   const extras = getExtrasForCombo(page.sport, page.gender, page.level);
   let tableRows = matches.map((m, idx) => {
-    const elim1 = m.tid1 && eliminatedTeams.has(m.tid1);
-    const elim2 = m.tid2 && eliminatedTeams.has(m.tid2);
+    const elim1 = eliminatedSlots.has(pairSlots[m.pair][0]);
+    const elim2 = eliminatedSlots.has(pairSlots[m.pair][1]);
     const s1 = m.c1 ? (elim1 ? 'background:#cbd5e1;color:#64748b;font-weight:600;filter:grayscale(100%);opacity:0.75;' : 'background:'+m.c1+';color:#fff;font-weight:600;') : '';
     const s2 = m.c2 ? (elim2 ? 'background:#cbd5e1;color:#64748b;font-weight:600;filter:grayscale(100%);opacity:0.75;' : 'background:'+m.c2+';color:#fff;font-weight:600;') : '';
     const isAdmin = currentMode === 'admin';
@@ -1130,8 +1116,7 @@ function renderCurrentSchedulePage() {
     const watermarks = { 'm1':'ผู้ชนะคู่ที่ 1','m2':'ผู้ชนะคู่ที่ 2','sf-1':'ผู้ชนะคู่ที่ 3','sf-2':'ผู้ชนะคู่ที่ 4','final':'ชนะเลิศ' };
     const cx = x + w / 2, cy = y + h / 2;
     if (filled) {
-      const teamId = page.data[id];
-      const isElim = teamId && eliminatedTeams.has(teamId);
+      const isElim = eliminatedSlots.has(id);
       const fill = isElim ? '#cbd5e1' : slotColors[id];
       const textColor = isElim ? '#64748b' : '#ffffff';
       return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="6" fill="'+fill+'" stroke="#475569" stroke-width="2"/>'
